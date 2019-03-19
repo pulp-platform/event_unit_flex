@@ -1,12 +1,41 @@
-// Copyright 2018 ETH Zurich and University of Bologna.
-// Copyright and related rights are licensed under the Solderpad Hardware
-// License, Version 0.51 (the "License"); you may not use this file except in
-// compliance with the License.  You may obtain a copy of the License at
-// http://solderpad.org/licenses/SHL-0.51. Unless required by applicable law
-// or agreed to in writing, software, hardware and materials distributed under
-// this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-// CONDITIONS OF ANY KIND, either express or implied. See the License for the
-// specific language governing permissions and limitations under the License.
+////////////////////////////////////////////////////////////////////////////////
+// Copyright (C) 2017 ETH Zurich, University of Bologna                       //
+// All rights reserved.                                                       //
+//                                                                            //
+// This code is under development and not yet released to the public.         //
+// Until it is released, the code is under the copyright of ETH Zurich and    //
+// the University of Bologna, and may contain confidential and/or unpublished //
+// work. Any reuse/redistribution is strictly forbidden without written       //
+// permission from ETH Zurich.                                                //
+//                                                                            //
+// Bug fixes and contributions will eventually be released under the          //
+// SolderPad open hardware license in the context of the PULP platform        //
+// (http://www.pulp-platform.org), under the copyright of ETH Zurich and the  //
+// University of Bologna.                                                     //
+//                                                                            //
+// Company:        IIS @ ETHZ - Federal Institute of Technology Zurich        //
+//                                                                            //
+// Engineer:       Florian Glaser, glaserf@ethz.ch                            //
+//                                                                            //
+// Additional contributions by:                                               //
+//                                                                            //
+//                                                                            //
+// Design Name:    Event Unit Flex                                            //
+// Module Name:    event_unit_core.sv                                         //
+// Project Name:   PULP ecosystem, family generation 4                        //
+// Language:       SystemVerilog                                              //
+//                                                                            //
+// Description:    Main unit that collects external and internal master event //
+//                 lines and issues events to a core. Also responsible for    //
+//                 putting a core to sleep, waking it up and for triggering   //
+//                 sw events and barriers. Instantiated once per core.        //
+//                                                                            //
+//                                                                            //
+// Versions:                                                                  //
+// v1.0  - 25Jan 16 - First Design Implementation                             //
+//                                                                            //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
 
 module event_unit_core
 #(
@@ -15,8 +44,7 @@ module event_unit_core
   parameter NB_BARR = NB_CORES/2,
   parameter NB_HW_MUT = 2,
   parameter MUTEX_MSG_W = 32,
-  parameter PER_ID_WIDTH  = 5,
-  parameter DEBUG_IRQ_ID = 32
+  parameter PER_ID_WIDTH  = 5
 )
 (
   // clock and reset
@@ -58,6 +86,8 @@ module event_unit_core
   input  logic        core_busy_i,
   output logic        core_clock_en_o,
 
+  input  logic        core_dbg_req_i,
+
   // periph bus slave for regular register access
   XBAR_PERIPH_BUS.Slave periph_int_bus_slave,
   // demuxed periph for fast register access and event trigger
@@ -81,7 +111,6 @@ module event_unit_core
   // calculated write data
   logic [31:0] wdata_event_mask_demux, wdata_event_mask_interc;
   logic [31:0] wdata_irq_mask_demux, wdata_irq_mask_interc;
-  logic [31:0] wdata_irq_mask_demux_dbg, wdata_irq_mask_interc_dbg;
   logic [31:0] wdata_event_buffer_demux, wdata_event_buffer_interc;
 
   logic [NB_CORES-1:0] wdata_sw_events_mask_demux, wdata_sw_events_mask_interc;
@@ -117,9 +146,6 @@ module event_unit_core
   logic        p_demux_wen_del_SP, p_demux_wen_del_SN;
   logic [7:0]  p_demux_add_del_SP, p_demux_add_del_SN;
 
-  // make sure the debug interrupt is active after reset
-  logic [31:0] irq_mask_rst_val;
-
   // core clock FSM
   enum logic [1:0] { ACTIVE=0, SLEEP=1, IRQ_WHILE_SLEEP=2 } core_clock_CS, core_clock_NS;
 
@@ -132,7 +158,7 @@ module event_unit_core
   assign irq_buffer_masked     = event_buffer_DP & irq_mask_DP;
 
   // calculation of one-hot clear mask for interrupts
-  assign irq_pending           = |irq_buffer_masked;
+  assign irq_pending           = |irq_buffer_masked | core_dbg_req_i;
   assign irq_clear_mask        = (core_irq_ack_i) ? ~(1'b1 << core_irq_ack_id_i) : '1;
 
   // new req/ack handling scheme for interrupts
@@ -191,28 +217,6 @@ module event_unit_core
   assign p_interc_wen_del_SN = periph_int_bus_slave.wen;
   assign p_interc_add_del_SN = periph_int_bus_slave.add[5:2];
 
-  // making sure the debug interrupt cannot be disabled, old behavior if DEBUG_IRQ_ID is not overridden
-  generate
-    if (DEBUG_IRQ_ID > 31) begin
-      assign wdata_irq_mask_interc_dbg = wdata_irq_mask_interc;
-      assign wdata_irq_mask_demux_dbg  = wdata_irq_mask_demux;
-      assign irq_mask_rst_val          = '0;
-    end
-    else begin
-      for (genvar I=0; I<32; I++) begin
-        if (DEBUG_IRQ_ID == I) begin
-          assign wdata_irq_mask_interc_dbg[I] = 1'b1;
-          assign wdata_irq_mask_demux_dbg[I]  = 1'b1;
-          assign irq_mask_rst_val[I]          = 1'b1;
-        end
-        else begin
-          assign wdata_irq_mask_interc_dbg[I] = wdata_irq_mask_interc[I];
-          assign wdata_irq_mask_demux_dbg[I]  = wdata_irq_mask_demux[I];
-          assign irq_mask_rst_val[I]          = 1'b0;
-        end
-      end
-    end
-  endgenerate
 
   //write logic for demux and interconnect port
   always_comb begin
@@ -497,7 +501,7 @@ module event_unit_core
     if ( rst_ni == 1'b0 ) begin
       core_clock_CS        <= ACTIVE;
       event_mask_DP        <= '0;
-      irq_mask_DP          <= irq_mask_rst_val;
+      irq_mask_DP          <= '0;
       irq_req_del_SP       <= '0;
       event_buffer_DP      <= '0;
       wait_clear_access_SP <= 1'b0;
@@ -526,9 +530,9 @@ module event_unit_core
         event_mask_DP   <= wdata_event_mask_interc;
 
       if ( we_demux[1] == 1'b1 )
-        irq_mask_DP     <= wdata_irq_mask_demux_dbg;
+        irq_mask_DP     <= wdata_irq_mask_demux;
       else if ( we_interc[1] == 1'b1 )
-        irq_mask_DP     <= wdata_irq_mask_interc_dbg;
+        irq_mask_DP     <= wdata_irq_mask_interc;
 
       if ( wait_clear_access_SP | core_irq_ack_i | (|master_event_lines_i) | we_demux[2] | we_interc[2] )
         event_buffer_DP <= event_buffer_DN;
@@ -698,8 +702,6 @@ module event_unit_core_monitor (
 			ignore_bins NO_EVT   = binsof(wakeup_event_i) intersect {1'b0};
 		}
 	endgroup
-
-	// (sim:/tb/pulp_chip_iface_wrap_i/i_dut/cluster_domain_i/cluster_i/cluster_peripherals_i/event_unit_flex_i/EU_CORE[5]/event_unit_core_i/event_buffer_masked != 0) && (sim:/tb/pulp_chip_iface_wrap_i/i_dut/cluster_domain_i/cluster_i/cluster_peripherals_i/event_unit_flex_i/EU_CORE[5]/event_unit_core_i/irq_buffer_masked != 0) && ( sim:/tb/pulp_chip_iface_wrap_i/i_dut/cluster_domain_i/cluster_i/cluster_peripherals_i/event_unit_flex_i/EU_CORE[5]/event_unit_core_i/core_clock_CS == IRQ_WHILE_SLEEP)
 
 	// don't forget covergroup instantiations
 	irq_simul irq_simul_i = new;

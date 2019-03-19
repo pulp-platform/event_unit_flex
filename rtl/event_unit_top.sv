@@ -1,12 +1,38 @@
-// Copyright 2018 ETH Zurich and University of Bologna.
-// Copyright and related rights are licensed under the Solderpad Hardware
-// License, Version 0.51 (the "License"); you may not use this file except in
-// compliance with the License.  You may obtain a copy of the License at
-// http://solderpad.org/licenses/SHL-0.51. Unless required by applicable law
-// or agreed to in writing, software, hardware and materials distributed under
-// this License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-// CONDITIONS OF ANY KIND, either express or implied. See the License for the
-// specific language governing permissions and limitations under the License.
+////////////////////////////////////////////////////////////////////////////////
+// Copyright (C) 2017 ETH Zurich, University of Bologna                       //
+// All rights reserved.                                                       //
+//                                                                            //
+// This code is under development and not yet released to the public.         //
+// Until it is released, the code is under the copyright of ETH Zurich and    //
+// the University of Bologna, and may contain confidential and/or unpublished //
+// work. Any reuse/redistribution is strictly forbidden without written       //
+// permission from ETH Zurich.                                                //
+//                                                                            //
+// Bug fixes and contributions will eventually be released under the          //
+// SolderPad open hardware license in the context of the PULP platform        //
+// (http://www.pulp-platform.org), under the copyright of ETH Zurich and the  //
+// University of Bologna.                                                     //
+//                                                                            //
+// Company:        IIS @ ETHZ - Federal Institute of Technology Zurich        //
+//                                                                            //
+// Engineer:       Florian Glaser, glaserf@ethz.ch                            //
+//                                                                            //
+// Additional contributions by:                                               //
+//                                                                            //
+//                                                                            //
+// Design Name:    Event Unit Flex                                            //
+// Module Name:    event_unit_top.sv                                          //
+// Project Name:   PULP ecosystem, family generation 4                        //
+// Language:       SystemVerilog                                              //
+//                                                                            //
+// Description:    Top-level entity, instatiated once per cluster             //
+//                                                                            //
+//                                                                            //
+// Versions:                                                                  //
+// v1.0  - 14Jan 16 - First Design Implementation                             //
+//                                                                            //
+//                                                                            //
+////////////////////////////////////////////////////////////////////////////////
 
 module event_unit_top
 #(
@@ -18,8 +44,7 @@ module event_unit_top
   parameter DISP_FIFO_DEPTH = 8,
   parameter PER_ID_WIDTH = 9,
   parameter EVNT_WIDTH = 8,
-  parameter SOC_FIFO_DEPTH = 8,
-  parameter DEBUG_IRQ_ID = 32
+  parameter SOC_FIFO_DEPTH = 8
 )
 (
   // clock and reset
@@ -41,6 +66,8 @@ module event_unit_top
 
   input  logic [NB_CORES-1:0]       core_busy_i,
   output logic [NB_CORES-1:0]       core_clock_en_o,
+
+  input  logic [NB_CORES-1:0]       core_dbg_req_i,
 
   // bus slave connections - periph bus and eu_direct_link
   XBAR_PERIPH_BUS.Slave     speriph_slave,
@@ -249,12 +276,11 @@ module event_unit_top
     generate
       for ( I=0; I < NB_CORES; I++ ) begin : EU_CORE
         event_unit_core #(
-          .NB_CORES     ( NB_CORES     ),
-          .NB_SW_EVT    ( NB_SW_EVT    ),
-          .NB_BARR      ( NB_BARR      ),
-          .NB_HW_MUT    ( NB_HW_MUT    ), 
-          .MUTEX_MSG_W  ( MUTEX_MSG_W  ),
-          .DEBUG_IRQ_ID ( DEBUG_IRQ_ID ) )
+          .NB_CORES    ( NB_CORES    ),
+          .NB_SW_EVT   ( NB_SW_EVT   ),
+          .NB_BARR     ( NB_BARR     ),
+          .NB_HW_MUT   ( NB_HW_MUT   ), 
+          .MUTEX_MSG_W ( MUTEX_MSG_W ) )
         event_unit_core_i (
           .clk_i                 ( clk_i                          ),
           .rst_ni                ( rst_ni                         ),
@@ -287,6 +313,8 @@ module event_unit_top
 
           .core_busy_i           ( core_busy_i[I]                 ),
           .core_clock_en_o       ( core_clock_en_o[I]             ),
+
+          .core_dbg_req_i        ( core_dbg_req_i[I]              ),
   
           .periph_int_bus_slave  ( periph_int_bus[I]              ),
           .eu_direct_link_slave  ( demux_int_bus_core[I]          )

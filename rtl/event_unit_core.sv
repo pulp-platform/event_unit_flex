@@ -57,7 +57,8 @@ module event_unit_core
   input  logic        core_busy_i,
   output logic        core_clock_en_o,
 
-  input  logic        core_dbg_req_i,
+  input  logic        dbg_req_i,
+  output logic        core_dbg_req_o,
 
   // periph bus slave for regular register access
   XBAR_PERIPH_BUS.Slave periph_int_bus_slave,
@@ -72,6 +73,7 @@ module event_unit_core
   logic [31:0] event_buffer_DP, event_buffer_DN;
 
   logic        irq_req_del_SP, irq_req_del_SN;
+  logic        dbg_req_del_SP, dbg_req_del_SN;
 
   logic [NB_CORES-1:0] sw_events_mask_DP;
   logic                wait_clear_access_SP, wait_clear_access_SN;
@@ -97,8 +99,6 @@ module event_unit_core
   logic [31:0] irq_clear_mask;
   logic [4:0]  irq_sel_id;
   logic        irq_pending;
-  logic        irq_mask_fsm;
-
 
   // multiple sources for sw events (write to trigger and read from wait regs)
   logic [NB_SW_EVT-1:0] sw_events_reg, sw_events_wait;
@@ -129,14 +129,17 @@ module event_unit_core
   assign irq_buffer_masked     = event_buffer_DP & irq_mask_DP;
 
   // calculation of one-hot clear mask for interrupts
-  assign irq_pending           = |irq_buffer_masked | core_dbg_req_i;
+  assign irq_pending           = |irq_buffer_masked;
   assign irq_clear_mask        = (core_irq_ack_i) ? ~(1'b1 << core_irq_ack_id_i) : '1;
 
-  // new req/ack handling scheme for interrupts
-  assign irq_mask_fsm          = stop_core_clock & (core_clock_CS == ACTIVE) & ~irq_req_del_SP;
-  assign irq_req_del_SN        = irq_pending; // & ~irq_mask_fsm; // & ~wakeup_mask_irq_SP;
+  // req/ack handling scheme for interrupts
+  assign irq_req_del_SN        = irq_pending;
   assign core_irq_req_o        = irq_req_del_SP;
   assign core_irq_id_o         = irq_sel_id;
+
+  // delaying of debug request to align to interrupt FSM handling
+  assign dbg_req_del_SN        = dbg_req_i;
+  assign core_dbg_req_o        = dbg_req_del_SP;
 
   // handshake for dispatch value consumption
   assign dispatch_pop_ack_o    = wakeup_event;
@@ -389,7 +392,7 @@ module event_unit_core
         // check if there is any sleep request at all
         if ( stop_core_clock ) begin
           // If there is already an irq request sent to the core, the replay is not properly detected.
-          if ( irq_pending ) begin
+          if ( irq_pending | dbg_req_i ) begin
             // avoids split/illegal transactions (gnt but no r_valid) 
             p_demux_gnt_sleep_fsm = 1'b0;
             trigger_release_SN    = 1'b0;
@@ -419,7 +422,7 @@ module event_unit_core
         core_clock_en         = 1'b0;
         p_demux_gnt_sleep_fsm = 1'b0;
 
-        if ( irq_pending ) begin
+        if ( irq_pending | dbg_req_i ) begin
           core_clock_en = 1'b1;
           core_clock_NS = IRQ_WHILE_SLEEP;
         end
@@ -436,7 +439,7 @@ module event_unit_core
       end
       IRQ_WHILE_SLEEP: begin
         if ( stop_core_clock ) begin
-          if ( ~irq_pending ) begin   
+          if ( ~irq_pending & ~dbg_req_i ) begin   
             if ( |event_buffer_masked ) begin
               core_clock_en = 1'b1;
 
@@ -474,6 +477,7 @@ module event_unit_core
       event_mask_DP        <= '0;
       irq_mask_DP          <= '0;
       irq_req_del_SP       <= '0;
+      dbg_req_del_SP       <= '0;
       event_buffer_DP      <= '0;
       wait_clear_access_SP <= 1'b0;
       trigger_release_SP   <= 1'b1;
@@ -514,6 +518,8 @@ module event_unit_core
         sw_events_mask_DP <= wdata_sw_events_mask_interc;
 
       irq_req_del_SP       <= irq_req_del_SN;
+
+      dbg_req_del_SP       <= dbg_req_del_SN;
 
       wait_clear_access_SP <= wait_clear_access_SN;
 

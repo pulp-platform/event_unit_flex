@@ -41,7 +41,8 @@ module event_unit_top
   input  logic [NB_CORES-1:0]       core_busy_i,
   output logic [NB_CORES-1:0]       core_clock_en_o,
 
-  input  logic [NB_CORES-1:0]       core_dbg_req_i,
+  input  logic [NB_CORES-1:0]       dbg_req_i,
+  output logic [NB_CORES-1:0]       core_dbg_req_o,
 
   // bus slave connections - periph bus and eu_direct_link
   XBAR_PERIPH_BUS.Slave     speriph_slave,
@@ -288,7 +289,8 @@ module event_unit_top
           .core_busy_i           ( core_busy_i[I]                 ),
           .core_clock_en_o       ( core_clock_en_o[I]             ),
 
-          .core_dbg_req_i        ( core_dbg_req_i[I]              ),
+          .dbg_req_i             ( dbg_req_i[I]                   ),
+          .core_dbg_req_o        ( core_dbg_req_o[I]              ),
   
           .periph_int_bus_slave  ( periph_int_bus[I]              ),
           .eu_direct_link_slave  ( demux_int_bus_core[I]          )

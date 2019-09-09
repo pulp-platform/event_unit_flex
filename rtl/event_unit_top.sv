@@ -110,11 +110,11 @@ module event_unit_top
     logic [NB_CORES-1:0][1:0]  disp_reg_sel;
 
     // periph bus links to all subcomponents
-    XBAR_PERIPH_BUS periph_int_bus[NB_CORES+NB_BARR+2:0]();
+    XBAR_PERIPH_BUS#(NB_CORES+1) periph_int_bus[NB_CORES+NB_BARR+2:0]();
 
     // demux periph bus to eu_core and barrier units
-    XBAR_PERIPH_BUS demux_int_bus_core[NB_CORES-1:0]();
-    XBAR_PERIPH_BUS demux_int_bus_barrier[NB_BARR-1:0]();
+    XBAR_PERIPH_BUS#(NB_CORES+1) demux_int_bus_core[NB_CORES-1:0]();
+    XBAR_PERIPH_BUS#(NB_CORES+1) demux_int_bus_barrier[NB_BARR-1:0]();
 
     genvar I,J,K;
 

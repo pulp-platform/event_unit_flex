@@ -111,6 +111,9 @@ module event_unit_top
     // periph bus links to all subcomponents
     XBAR_PERIPH_BUS#(NB_CORES+1) periph_int_bus[NB_CORES+NB_BARR+2:0]();
 
+    // pipelined periph bus
+    XBAR_PERIPH_BUS#(NB_CORES+1) periph_pipe_bus();
+   
     // demux periph bus to eu_core and barrier units
     XBAR_PERIPH_BUS#(NB_CORES+1) demux_int_bus_core[NB_CORES-1:0]();
     XBAR_PERIPH_BUS#(NB_CORES+1) demux_int_bus_barrier[NB_BARR-1:0]();
@@ -201,6 +204,47 @@ module event_unit_top
     assign message_master.be    = '0;
     assign message_master.id    = '0;
 
+   // pipelining for periph slave to relax timing
+    periph_FIFO_id #(
+      .ADDR_WIDTH       ( 32          ),
+      .DATA_WIDTH       ( 32          ),
+      .ID_WIDTH         ( NB_CORES+1  ),
+      .BYTE_ENABLE_BIT  ( 4           ) )
+    periph_FIFO_id_i (
+      .clk_i          ( clk_i                   ),
+      .rst_ni         ( rst_ni                  ),
+      .test_en_i      ( test_mode_i             ),
+    
+      // input side REQ
+      .data_req_i     ( speriph_slave.req       ),
+      .data_add_i     ( speriph_slave.add       ),
+      .data_wen_i     ( speriph_slave.wen       ),
+      .data_wdata_i   ( speriph_slave.wdata     ),
+      .data_be_i      ( speriph_slave.be        ),
+      .data_id_i      ( speriph_slave.id        ),
+      .data_gnt_o     ( speriph_slave.gnt       ),
+    
+      // output side REQ
+      .data_req_o     ( periph_pipe_bus.req     ),
+      .data_add_o     ( periph_pipe_bus.add     ),
+      .data_wen_o     ( periph_pipe_bus.wen     ),
+      .data_wdata_o   ( periph_pipe_bus.wdata   ),
+      .data_be_o      ( periph_pipe_bus.be      ),
+      .data_id_o      ( periph_pipe_bus.id      ),
+      .data_gnt_i     ( periph_pipe_bus.gnt     ),
+    
+      // input side RESP - forwarded to output side resp
+      .data_r_valid_i ( periph_pipe_bus.r_valid ),
+      .data_r_opc_i   ( periph_pipe_bus.r_opc   ),
+      .data_r_id_i    ( periph_pipe_bus.r_id    ),
+      .data_r_rdata_i ( periph_pipe_bus.r_rdata ),
+    
+      // output side RESP
+      .data_r_valid_o ( speriph_slave.r_valid   ),
+      .data_r_opc_o   ( speriph_slave.r_opc     ),
+      .data_r_id_o    ( speriph_slave.r_id      ),
+      .data_r_rdata_o ( speriph_slave.r_rdata   )
+    );
 
     event_unit_interface_mux #(
       .NB_CORES ( NB_CORES ),
@@ -208,9 +252,10 @@ module event_unit_top
     event_unit_interface_mux_i (
       .clk_i                        ( clk_i                 ),
       .rst_ni                       ( rst_ni                ),
-
+				
       .speriph_slave                ( speriph_slave         ),
       .periph_int_bus_master        ( periph_int_bus        ),
+
 
       .demux_slave                  ( eu_direct_link        ),
       .demux_int_bus_core_master    ( demux_int_bus_core    ),

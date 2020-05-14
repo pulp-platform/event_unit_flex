@@ -254,7 +254,8 @@ module event_unit_top
       .rst_ni                       ( rst_ni                ),
 				
       .speriph_slave                ( speriph_slave         ),
-      .speriph_slave                ( periph_pipe_bus       ),
+      .periph_int_bus_master        ( periph_int_bus        ),
+
 
       .demux_slave                  ( eu_direct_link        ),
       .demux_int_bus_core_master    ( demux_int_bus_core    ),

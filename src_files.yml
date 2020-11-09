@@ -4,12 +4,12 @@ event_unit_flex:
   ]
   files: [
     ./rtl/event_unit_core.sv,
-    ./rtl/event_unit_interface_mux.sv,
-    ./rtl/event_unit_top.sv,
-    ./rtl/soc_periph_fifo.sv,
-    ./rtl/interc_sw_evt_trig.sv,
     ./rtl/hw_barrier_unit.sv,
-    ./rtl/hw_mutex_unit.sv,
     ./rtl/hw_dispatch.sv,
-    ./rtl/periph_FIFO_id.sv
+    ./rtl/hw_mutex_unit.sv,
+    ./rtl/interc_sw_evt_trig.sv,
+    ./rtl/periph_FIFO_id.sv,
+    ./rtl/soc_periph_fifo.sv,
+    ./rtl/event_unit_interface_mux.sv,
+    ./rtl/event_unit_top.sv
   ]

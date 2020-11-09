@@ -1,15 +1,25 @@
 package:
   name: event_unit_flex
 
+dependencies:
+  common_cells: { git: "git@github.com:pulp-platform/common_cells.git", version: 1.13.1 }
+  # pulp_cluster: this package uses cluster_event_map defined in pulp_cluster, however is also a dependency of pulp_cluster. cyclical dependencies seem suboptimal.
+
 sources:
   include_dirs: ["rtl"]
   files:
-    - rtl/event_unit_core.sv
-    - rtl/event_unit_interface_mux.sv
-    - rtl/event_unit_top.sv
-    - rtl/soc_periph_fifo.sv
-    - rtl/interc_sw_evt_trig.sv
+    # Source files grouped in levels. Files in level 0 have no dependencies on files in this
+    # package. Files in level 1 only depend on files in level 0, files in level 2 on files in
+    # levels 1 and 0, etc. Files within a level are ordered alphabetically.
+    # Level 0
+    - rtl/event_unit_core.sv # multiple modules defined
     - rtl/hw_barrier_unit.sv
-    - rtl/hw_mutex_unit.sv
     - rtl/hw_dispatch.sv
+    - rtl/hw_mutex_unit.sv # multiple modules defined
+    - rtl/interc_sw_evt_trig.sv
     - rtl/periph_FIFO_id.sv
+    - rtl/soc_periph_fifo.sv
+    # Level 1
+    - rtl/event_unit_interface_mux.sv
+    # Level 2
+    - rtl/event_unit_top.sv

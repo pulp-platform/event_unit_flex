@@ -67,13 +67,10 @@ assign            { data_add_o, data_wen_o, data_wdata_o, data_id_o, data_be_o }
 
 
 
-generic_fifo
-#( 
+generic_fifo #( 
       .DATA_WIDTH ( FIFO_DW   ),
       .DATA_DEPTH ( 2         )
-)
-FIFO_REQ
-(
+) FIFO_REQ (
       .clk          ( clk_i      ),
       .rst_n        ( rst_ni     ),
       .test_mode_i  ( test_en_i  ),

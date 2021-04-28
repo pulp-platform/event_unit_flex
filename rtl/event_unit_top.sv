@@ -141,7 +141,6 @@ module event_unit_top
       .dma_events_i        ( dma_events_i       ),
       .timer_events_i      ( timer_events_i     ),
       .cluster_events_i    ( cluster_events_i   ),
-      .decompr_done_evt_i  ( decompr_done_evt_i ),
 
       .events_mapped_o     ( cluster_int_events )
     );
@@ -161,7 +160,7 @@ module event_unit_top
         for ( J=0; J < NB_SW_EVT; J++ ) begin : EU_LOOP_SW_EVTS_TRANSP
           assign core_sw_events[J][I]        = core_sw_events_transp[I][J];
         end
-          
+
         for ( J=0; J < NB_CORES; J++ ) begin : EU_LOOP_SW_EVTS_MASK_TRANSP
           assign core_sw_events_mask[J][I]   = core_sw_events_mask_transp[I][J];
         end
@@ -256,18 +255,18 @@ module event_unit_top
           .NB_CORES    ( NB_CORES    ),
           .NB_SW_EVT   ( NB_SW_EVT   ),
           .NB_BARR     ( NB_BARR     ),
-          .NB_HW_MUT   ( NB_HW_MUT   ), 
+          .NB_HW_MUT   ( NB_HW_MUT   ),
           .MUTEX_MSG_W ( MUTEX_MSG_W ) )
         event_unit_core_i (
           .clk_i                 ( clk_i                          ),
           .rst_ni                ( rst_ni                         ),
           .test_mode_i           ( test_mode_i                    ),
-  
+
           .master_event_lines_i  ( cluster_int_events[I]          ),
-  
+
           .core_sw_events_o      ( core_sw_events_transp[I]       ),
           .core_sw_events_mask_o ( core_sw_events_mask_transp[I]  ),
-  
+
           .hw_barr_id_o          ( hw_barr_trigger[I]             ),
 
           .mutex_rd_req_o        ( mutex_lock_req[I]              ),
@@ -293,7 +292,7 @@ module event_unit_top
 
           .dbg_req_i             ( dbg_req_i[I]                   ),
           .core_dbg_req_o        ( core_dbg_req_o[I]              ),
-  
+
           .periph_int_bus_slave  ( periph_int_bus[I]              ),
           .eu_direct_link_slave  ( demux_int_bus_core[I]          )
         );
@@ -329,7 +328,7 @@ module event_unit_top
         hw_mutex_unit_i (
           .clk_i             ( clk_i                              ),
           .rst_ni            ( rst_ni                             ),
-          
+
           .lock_req_i        ( mutex_lock_req_transp[I]           ),
           .unlock_req_i      ( mutex_unlock_req_transp[I]         ),
 

@@ -18,7 +18,8 @@ module event_unit_top
   parameter DISP_FIFO_DEPTH = 8,
   parameter PER_ID_WIDTH = 9,
   parameter EVNT_WIDTH = 8,
-  parameter SOC_FIFO_DEPTH = 8
+  parameter SOC_FIFO_DEPTH = 8,
+  parameter NUM_INTERRUPTS = 0
 )
 (
   // clock and reset
@@ -35,9 +36,9 @@ module event_unit_top
   input  logic [NB_CORES-1:0][31:0] cluster_events_i,
 
   output logic [NB_CORES-1:0]       core_irq_req_o,
-  output logic [NB_CORES-1:0][4:0]  core_irq_id_o,
+  output logic [NB_CORES-1:0][$clog2(NUM_INTERRUPTS)-1:0]  core_irq_id_o,
   input  logic [NB_CORES-1:0]       core_irq_ack_i,
-  input  logic [NB_CORES-1:0][4:0]  core_irq_ack_id_i,
+  input  logic [NB_CORES-1:0][$clog2(NUM_INTERRUPTS)-1:0]  core_irq_ack_id_i,
 
   input  logic [NB_CORES-1:0]       core_busy_i,
   output logic [NB_CORES-1:0]       core_clock_en_o,
@@ -256,8 +257,9 @@ module event_unit_top
           .NB_SW_EVT   ( NB_SW_EVT   ),
           .NB_BARR     ( NB_BARR     ),
           .NB_HW_MUT   ( NB_HW_MUT   ),
-          .MUTEX_MSG_W ( MUTEX_MSG_W ) )
-        event_unit_core_i (
+          .MUTEX_MSG_W ( MUTEX_MSG_W ),
+          .NUM_INTERRUPTS (NUM_INTERRUPTS)
+        ) event_unit_core_i (
           .clk_i                 ( clk_i                          ),
           .rst_ni                ( rst_ni                         ),
           .test_mode_i           ( test_mode_i                    ),

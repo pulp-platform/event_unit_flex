@@ -15,7 +15,8 @@ module event_unit_core
   parameter NB_BARR = NB_CORES/2,
   parameter NB_HW_MUT = 2,
   parameter MUTEX_MSG_W = 32,
-  parameter PER_ID_WIDTH  = 5
+  parameter PER_ID_WIDTH  = 5,
+  parameter NUM_INTERRUPTS = 0
 )
 (
   // clock and reset
@@ -50,9 +51,9 @@ module event_unit_core
 
   // clock and interrupt request to core
   output logic        core_irq_req_o,
-  output logic [4:0]  core_irq_id_o,
+  output logic [$clog2(NUM_INTERRUPTS)-1:0]  core_irq_id_o,
   input  logic        core_irq_ack_i,
-  input  logic [4:0]  core_irq_ack_id_i,
+  input  logic [$clog2(NUM_INTERRUPTS)-1:0]  core_irq_ack_id_i,
 
   input  logic        core_busy_i,
   output logic        core_clock_en_o,
@@ -69,7 +70,7 @@ module event_unit_core
 
   // registers
   logic [31:0] event_mask_DP;
-  logic [31:0] irq_mask_DP;
+  logic [NUM_INTERRUPTS-1:0] irq_mask_DP;
   logic [31:0] event_buffer_DP, event_buffer_DN;
 
   logic        irq_req_del_SP, irq_req_del_SN;
@@ -92,12 +93,13 @@ module event_unit_core
   logic [3:0]  we_demux, we_interc;
 
   // combinational signals
-  logic [31:0] event_buffer_masked, irq_buffer_masked;
+  logic [NUM_INTERRUPTS-1:0] irq_buffer_masked;
+  logic [31:0]               event_buffer_masked; // Decouple irq and event widths. Event width is left to 32-bit, irq width is made configurable
   logic        write_conflict, demux_add_is_sleep, demux_add_is_clear;
   logic        stop_core_clock, core_clock_en;
 
-  logic [31:0] irq_clear_mask;
-  logic [4:0]  irq_sel_id;
+  logic [NUM_INTERRUPTS-1:0] irq_clear_mask;
+  logic [$clog2(NUM_INTERRUPTS)-1:0]  irq_sel_id;
   logic        irq_pending;
 
   // multiple sources for sw events (write to trigger and read from wait regs)
@@ -126,7 +128,7 @@ module event_unit_core
 
   // masking and reduction of buffer
   assign event_buffer_masked   = event_buffer_DP & event_mask_DP;
-  assign irq_buffer_masked     = event_buffer_DP & irq_mask_DP;
+  assign irq_buffer_masked     = {{(NUM_INTERRUPTS-32){1'b0}}, event_buffer_DP} & irq_mask_DP;
 
   // calculation of one-hot clear mask for interrupts
   assign irq_pending           = |irq_buffer_masked;
@@ -464,7 +466,7 @@ module event_unit_core
 
   // find first leading 1 for current irq priorization scheme
   fl1_loop #(
-    .WIDTH(32) )
+    .WIDTH(NUM_INTERRUPTS) )
   fl1_loop_i (
     .vector_i(irq_buffer_masked),
     .idx_bin_o(irq_sel_id),

@@ -30,7 +30,6 @@ module event_unit_top
   // all kinds of cluster internal events, split into different signals for readability
   input  logic [NB_CORES-1:0][3:0]  acc_events_i,
   input  logic [NB_CORES-1:0][1:0]  dma_events_i,
-  input  logic decompr_done_evt_i,
   input  logic [NB_CORES-1:0][1:0]  timer_events_i,
   // usually much less than 32 bit, only for flexibility for different chips
   input  logic [NB_CORES-1:0][31:0] cluster_events_i,

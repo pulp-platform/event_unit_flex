@@ -24,6 +24,8 @@ module hw_barrier_unit
   // generated event, masked with target core mask -> to eu_core
   output logic [NB_CORES-1:0] barrier_events_o,
 
+  output logic barrier_matched_o,
+
   // demuxed slave ports from each core, reduced to one bus
   XBAR_PERIPH_BUS.Slave     demux_bus_slave,
   // single plug from periph interconnect with pre-decoded requests
@@ -51,6 +53,7 @@ module hw_barrier_unit
     logic write_conflict;
 
     logic barrier_matched;
+    assign barrier_matched_o = barrier_matched;
 
     genvar I,J;
 

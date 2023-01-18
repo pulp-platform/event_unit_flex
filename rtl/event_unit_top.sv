@@ -44,6 +44,8 @@ module event_unit_top
   input  logic [NB_CORES-1:0]       dbg_req_i,
   output logic [NB_CORES-1:0]       core_dbg_req_o,
 
+  output logic [NB_BARR-1:0]        barrier_matched_o,
+
   // bus slave connections - periph bus and eu_direct_link
   XBAR_PERIPH_BUS.Slave     speriph_slave,
   XBAR_PERIPH_BUS.Slave     eu_direct_link[NB_CORES-1:0],
@@ -356,6 +358,7 @@ module event_unit_top
           .barrier_trigger_core_i ( hw_barr_trigger_transp[I]         ),
           .barrier_status_o       (                                   ),
           .barrier_events_o       ( cluster_int_events_barr_transp[I] ),
+          .barrier_matched_o      ( barrier_matched_o[I]              ),
 
           .demux_bus_slave        ( demux_int_bus_barrier[I]          ),
           .periph_bus_slave       ( periph_int_bus[NB_CORES+I]        )

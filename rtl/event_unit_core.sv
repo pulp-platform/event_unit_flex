@@ -282,8 +282,9 @@ module event_unit_core
       endcase
     end
 
+    // clear only the events returned by the _wait_clear read; events arriving in this cycle are kept
     if ( wait_clear_access_SP == 1'b1 )
-      event_buffer_DN = ((event_buffer_DP | master_event_lines_i) & ~event_mask_DP) & irq_clear_mask;
+      event_buffer_DN = ((event_buffer_DP & ~event_mask_DP) | master_event_lines_i) & irq_clear_mask;
     else if ( we_demux[2] == 1'b1 )
       event_buffer_DN = (wdata_event_buffer_demux | master_event_lines_i) & irq_clear_mask;
     else if ( we_interc[2] == 1'b1 )

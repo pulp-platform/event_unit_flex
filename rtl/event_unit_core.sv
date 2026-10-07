@@ -159,7 +159,7 @@ module event_unit_core
                                    ( eu_direct_link_slave.add[9:6] == 4'b00_11)                                      || // hw mutex units - always _wait_clear
                                    ({eu_direct_link_slave.add[9:6],eu_direct_link_slave.add[3:2]} == 6'b0010_00 ) );    // hw dispatch fifo_read
    
-  assign stop_core_clock       = ( (eu_direct_link_slave.req == 1'b1) && (eu_direct_link_slave.wen == 1'b1) && (demux_add_is_sleep == 1'b1) );
+  assign stop_core_clock       = ( (eu_direct_link_slave.req == 1'b1) && (eu_direct_link_slave.wen == 1'b1) && (demux_add_is_sleep == 1'b1) && (wait_clear_access_SP == 1'b0) );
   
   assign write_conflict        = ( ({periph_int_bus_slave.req, eu_direct_link_slave.req} == 2'b11) &&
                                    ({periph_int_bus_slave.wen, eu_direct_link_slave.wen} == 2'b00)    );
@@ -221,7 +221,7 @@ module event_unit_core
     dispatch_reg_sel_o = '0; 
 
     // periph demux write access
-    if ( (eu_direct_link_slave.req == 1'b1) && (eu_direct_link_slave.wen == 1'b0) && (p_demux_gnt == 1'b1) ) begin
+    if ( (eu_direct_link_slave.req == 1'b1) && (eu_direct_link_slave.wen == 1'b0) && (wait_clear_access_SP == 1'b0) ) begin
       casex (eu_direct_link_slave.add[9:6]) // decode reg group
         4'b00_00: begin
           // eu core registers
@@ -330,7 +330,7 @@ module event_unit_core
       endcase
     end
 
-    if ( eu_direct_link_slave.req & eu_direct_link_slave.wen & trigger_release_SP ) begin
+    if ( eu_direct_link_slave.req & eu_direct_link_slave.wen & trigger_release_SP & ~wait_clear_access_SP ) begin
       // trigger sw_event+read buffer+sleep(+clear) accesses
       if ( (eu_direct_link_slave.add[9:6] == 4'b0101) || (eu_direct_link_slave.add[9:6] == 4'b0110) ) begin
         sw_events_wait[eu_direct_link_slave.add[4:2]] = 1'b1;

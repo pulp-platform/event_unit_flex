@@ -264,7 +264,7 @@ module event_unit_core
     end
 
     // periph interconnect write access
-    if ( (periph_int_bus_slave.req == 1'b1) && (periph_int_bus_slave.wen == 1'b0) ) begin
+    if ( (periph_int_bus_slave.req == 1'b1) && (periph_int_bus_slave.wen == 1'b0) && (p_interc_gnt == 1'b1) ) begin
       case (periph_int_bus_slave.add[5:2])
         4'h0: begin we_interc[0] = 1'b1; wdata_event_mask_interc     = periph_int_bus_slave.wdata;                                    end
         4'h1: begin we_interc[0] = 1'b1; wdata_event_mask_interc     = event_mask_DP & ~periph_int_bus_slave.wdata;                   end

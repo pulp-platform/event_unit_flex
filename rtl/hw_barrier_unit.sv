@@ -128,7 +128,7 @@ module hw_barrier_unit
             3'b011: interc_read_req_del_SN = 2'b11;
           endcase
         end
-        else begin
+        else if ( interc_gnt_del_SN == 1'b1 ) begin
           case ( periph_bus_slave.add[4:2] )
             3'b000: interc_we_trigger_mask   = 1'b1;
             3'b011: interc_we_target_mask    = 1'b1;

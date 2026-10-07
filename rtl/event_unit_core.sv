@@ -194,9 +194,6 @@ module event_unit_core
 
   //write logic for demux and interconnect port
   always_comb begin
-    // keep old buffer state and buffer newly triggered events
-    event_buffer_DN   = (event_buffer_DP | master_event_lines_i) & irq_clear_mask;
-
     // default: don't write any register
     we_demux                    = '0;
     wdata_event_mask_demux      = '0;
@@ -224,7 +221,7 @@ module event_unit_core
     dispatch_reg_sel_o = '0; 
 
     // periph demux write access
-    if ( (eu_direct_link_slave.req == 1'b1) && (eu_direct_link_slave.wen == 1'b0) ) begin
+    if ( (eu_direct_link_slave.req == 1'b1) && (eu_direct_link_slave.wen == 1'b0) && (p_demux_gnt == 1'b1) ) begin
       casex (eu_direct_link_slave.add[9:6]) // decode reg group
         4'b00_00: begin
           // eu core registers
@@ -282,13 +279,12 @@ module event_unit_core
       endcase
     end
 
-    // clear only the events returned by the _wait_clear read; events arriving in this cycle are kept
-    if ( wait_clear_access_SP == 1'b1 )
-      event_buffer_DN = ((event_buffer_DP & ~event_mask_DP) | master_event_lines_i) & irq_clear_mask;
-    else if ( we_demux[2] == 1'b1 )
-      event_buffer_DN = (wdata_event_buffer_demux | master_event_lines_i) & irq_clear_mask;
-    else if ( we_interc[2] == 1'b1 )
-      event_buffer_DN = (wdata_event_buffer_interc | master_event_lines_i) & irq_clear_mask;
+    // apply buffer clears, then buffer newly triggered events
+    event_buffer_DN = event_buffer_DP & irq_clear_mask;
+    if ( wait_clear_access_SP == 1'b1 ) event_buffer_DN = event_buffer_DN & ~event_mask_DP;
+    if ( we_demux[2] == 1'b1 )          event_buffer_DN = event_buffer_DN & wdata_event_buffer_demux;
+    if ( we_interc[2] == 1'b1 )         event_buffer_DN = event_buffer_DN & wdata_event_buffer_interc;
+    event_buffer_DN = event_buffer_DN | master_event_lines_i;
 
   end
 

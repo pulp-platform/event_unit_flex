@@ -183,13 +183,22 @@ module event_unit_top
   end
 
 
-  // TODO dummy assignments
-  // was the external event mux. probably no longer needed
-  assign periph_int_bus[NB_CORES+NB_BARR+2].gnt     = 1'b0;
+  // inter-cluster message range: no unit behind it yet, accesses are granted and answered with 0 so that they do not
+  // block the periph bus
+  logic intercluster_r_valid_SP;
+
+  assign periph_int_bus[NB_CORES+NB_BARR+2].gnt     = periph_int_bus[NB_CORES+NB_BARR+2].req;
   assign periph_int_bus[NB_CORES+NB_BARR+2].r_opc   = 1'b0;
-  assign periph_int_bus[NB_CORES+NB_BARR+2].r_valid = 1'b0;
+  assign periph_int_bus[NB_CORES+NB_BARR+2].r_valid = intercluster_r_valid_SP;
   assign periph_int_bus[NB_CORES+NB_BARR+2].r_rdata = '0;
   assign periph_int_bus[NB_CORES+NB_BARR+2].r_id    = '0;
+
+  always_ff @(posedge clk_i, negedge rst_ni) begin
+    if ( rst_ni == 1'b0 )
+      intercluster_r_valid_SP <= 1'b0;
+    else
+      intercluster_r_valid_SP <= periph_int_bus[NB_CORES+NB_BARR+2].req;
+  end
 
   // pipelining for periph slave to relax timing
   periph_FIFO_id #(

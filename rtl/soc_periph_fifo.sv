@@ -36,6 +36,7 @@ module soc_periph_fifo
   logic [FIFO_DEPTH-1:0]               entry_valid_SP, entry_valid_SN;
   logic [LOG_FIFO_DEPTH-1:0]           r_ptr_SP, r_ptr_SN, w_ptr_SP, w_ptr_SN;
   logic                                r_req_del_SP, r_req_del_SN;
+  logic                                w_req_del_SP, w_req_del_SN;
 
   // control logic
   logic fifo_full, fifo_empty;
@@ -59,6 +60,7 @@ module soc_periph_fifo
     w_ptr_SN        = w_ptr_SP;
     r_ptr_SN        = r_ptr_SP;
     r_req_del_SN    = 1'b0;
+    w_req_del_SN    = 1'b0;
     fifo_data_DN    = fifo_data_DP;
     entry_valid_SN  = entry_valid_SP;
 
@@ -75,6 +77,13 @@ module soc_periph_fifo
 
     if (periph_int_bus_slave.req & periph_int_bus_slave.wen)
       r_req_del_SN = 1'b1;
+
+    // the register is read-only: a write is answered and ignored, it must not block the bus
+    if (periph_int_bus_slave.req & ~periph_int_bus_slave.wen)
+      w_req_del_SN = 1'b1;
+
+    if (w_req_del_SP)
+      periph_int_bus_slave.r_valid = 1'b1;
 
     // react to delayed read request, move read pointer if we don't read an empty FIFO
     if (r_req_del_SP) begin
@@ -113,6 +122,7 @@ module soc_periph_fifo
       r_ptr_SP        <= '0;
       w_ptr_SP        <= '0;
       r_req_del_SP    <= 1'b0;
+      w_req_del_SP    <= 1'b0;
       `ifdef SIM
           // synopsys translate_off
           fifo_data_DP    <= fifo_data_rand;
@@ -128,6 +138,7 @@ module soc_periph_fifo
       r_ptr_SP        <= r_ptr_SN;
       w_ptr_SP        <= w_ptr_SN;
       r_req_del_SP    <= r_req_del_SN;
+      w_req_del_SP    <= w_req_del_SN;
     end
   end
 

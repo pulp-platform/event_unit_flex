@@ -213,3 +213,5 @@ On `master` (`763c3b9`) 27 tests pass, 16 fail and T24 and T59 are `KNOWN`. Ever
 | periph accesses to the inter-cluster range are never granted | P4 | T46 | `event_unit_top`: grant and answer with 0 |
 
 The first five deviations show only when a request reaches the unit in c1, that is with two outstanding transactions (a plain `lw` followed by an independent load or store on the CV32E40X or the cv32e40p LSU), or when an event arrives in c1. The last two hang the periph bus. The random test (T40) runs into several of them.
+
+The RTL in this tree has all these changes.

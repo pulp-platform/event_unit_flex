@@ -159,7 +159,9 @@ module event_unit_core
                                    ( eu_direct_link_slave.add[9:6] == 4'b00_11)                                      || // hw mutex units - always _wait_clear
                                    ({eu_direct_link_slave.add[9:6],eu_direct_link_slave.add[3:2]} == 6'b0010_00 ) );    // hw dispatch fifo_read
    
-  assign stop_core_clock       = ( (eu_direct_link_slave.req == 1'b1) && (eu_direct_link_slave.wen == 1'b1) && (demux_add_is_sleep == 1'b1) );
+  // a request presented in the _wait_clear response cycle is not granted and must have no effect until it is
+  assign stop_core_clock       = ( (eu_direct_link_slave.req == 1'b1) && (eu_direct_link_slave.wen == 1'b1) && (demux_add_is_sleep == 1'b1) &&
+                                   (wait_clear_access_SP == 1'b0) );
   
   assign write_conflict        = ( ({periph_int_bus_slave.req, eu_direct_link_slave.req} == 2'b11) &&
                                    ({periph_int_bus_slave.wen, eu_direct_link_slave.wen} == 2'b00)    );
@@ -194,8 +196,8 @@ module event_unit_core
 
   //write logic for demux and interconnect port
   always_comb begin
-    // keep old buffer state and buffer newly triggered events
-    event_buffer_DN   = (event_buffer_DP | master_event_lines_i) & irq_clear_mask;
+    // keep old buffer state and buffer newly triggered events; the irq ack clears before the new events are added
+    event_buffer_DN   = (event_buffer_DP & irq_clear_mask) | master_event_lines_i;
 
     // default: don't write any register
     we_demux                    = '0;
@@ -224,7 +226,7 @@ module event_unit_core
     dispatch_reg_sel_o = '0; 
 
     // periph demux write access
-    if ( (eu_direct_link_slave.req == 1'b1) && (eu_direct_link_slave.wen == 1'b0) ) begin
+    if ( (eu_direct_link_slave.req == 1'b1) && (eu_direct_link_slave.wen == 1'b0) && (wait_clear_access_SP == 1'b0) ) begin
       casex (eu_direct_link_slave.add[9:6]) // decode reg group
         4'b00_00: begin
           // eu core registers
@@ -282,12 +284,13 @@ module event_unit_core
       endcase
     end
 
+    // clear only the events returned by the _wait_clear read; events arriving in this cycle are kept
     if ( wait_clear_access_SP == 1'b1 )
-      event_buffer_DN = ((event_buffer_DP | master_event_lines_i) & ~event_mask_DP) & irq_clear_mask;
+      event_buffer_DN = (event_buffer_DP & ~event_mask_DP & irq_clear_mask) | master_event_lines_i;
     else if ( we_demux[2] == 1'b1 )
-      event_buffer_DN = (wdata_event_buffer_demux | master_event_lines_i) & irq_clear_mask;
+      event_buffer_DN = (wdata_event_buffer_demux & irq_clear_mask) | master_event_lines_i;
     else if ( we_interc[2] == 1'b1 )
-      event_buffer_DN = (wdata_event_buffer_interc | master_event_lines_i) & irq_clear_mask;
+      event_buffer_DN = (wdata_event_buffer_interc & irq_clear_mask) | master_event_lines_i;
 
   end
 
@@ -333,7 +336,7 @@ module event_unit_core
       endcase
     end
 
-    if ( eu_direct_link_slave.req & eu_direct_link_slave.wen & trigger_release_SP ) begin
+    if ( eu_direct_link_slave.req & eu_direct_link_slave.wen & trigger_release_SP & ~wait_clear_access_SP ) begin
       // trigger sw_event+read buffer+sleep(+clear) accesses
       if ( (eu_direct_link_slave.add[9:6] == 4'b0101) || (eu_direct_link_slave.add[9:6] == 4'b0110) ) begin
         sw_events_wait[eu_direct_link_slave.add[4:2]] = 1'b1;
